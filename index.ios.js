@@ -11,6 +11,7 @@ import {
     Text,
     View,
     TabBarIOS,
+    Navigator
 } from 'react-native';
 import List from './src/view/List'
 import Edit from './src/view/Edit'
@@ -39,7 +40,19 @@ export default class Main extends Component {
                             selectedTab: 'list',
                         });
                     }}>
-                    <List/>
+                    <Navigator
+                        initialRoute={{
+                            name: 'list',
+                            component: List
+                        }}
+                        configureScene={(route) => {
+                            return Navigator.SceneConfigs.FloatFromRight;
+                        }}
+                        renderScene={(route, navigator) => {
+                            let Component = route.component;
+                            return <Component {...route.params} navigator={navigator}/>
+                        }}
+                    />
                 </TabBarIOS.Item>
                 <TabBarIOS.Item
                     icon={require('./src/img/recording.png')}

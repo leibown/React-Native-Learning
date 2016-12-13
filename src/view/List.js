@@ -7,17 +7,15 @@ import {
     Text,
     View,
     ListView,
-    TouchableHighlight,
-    Image,
     ActivityIndicator,
-    Dimensions
+    Dimensions,
+    RefreshControl
 } from 'react-native';
-import request from '../common/request'
-
+import request from '../common/request';
+import Item from './Item';
+import Detail from './Detail';
 
 const config = require('../common/config');
-const width = Dimensions.get('window').width;
-
 
 var cachedResult = {
     nextPage: 1,
@@ -32,6 +30,7 @@ export default class List extends Component {
         this.state = {
             dataSource: ds.cloneWithRows([]),
             isLoadingTail: false,
+            isRefreshing: false
         };
     }
 
@@ -41,9 +40,14 @@ export default class List extends Component {
 
     _fetchData = (page) => {
         let that = this;
-        this.setState({
-            isLoadingTail: true
-        });
+        if (page !== 0)
+            this.setState({
+                isLoadingTail: true
+            });
+        else
+            this.setState({
+                isRefreshing: true
+            });
         request
             .get(config.api.base + config.api.list, {
                 accessToken: 'sbdsad',
@@ -52,53 +56,47 @@ export default class List extends Component {
             .then((data) => {
                 if (data.success) {
                     let items = cachedResult.items.slice();
-                    items = items.concat(data.data);
+                    if (page !== 0) {
+                        items = items.concat(data.data);
+                        cachedResult.nextPage += 1;
+                    } else {
+                        items = data.data.concat(items);
+                    }
+
                     cachedResult.items = items;
                     cachedResult.total = data.total;
-
                     setTimeout(() => {
-                        that.setState({
-                            dataSource: that.state.dataSource.cloneWithRows(cachedResult.items),
-                            isLoadingTail: false
-                        });
+                        if (page !== 0)
+                            that.setState({
+                                dataSource: that.state.dataSource.cloneWithRows(cachedResult.items),
+                                isLoadingTail: false
+                            });
+                        else
+                            that.setState({
+                                dataSource: that.state.dataSource.cloneWithRows(cachedResult.items),
+                                isRefreshing: false
+                            });
                     }, 2000);
                 }
             })
             .catch((error) => {
                 console.error(error);
-                this.setState({
-                    isLoadingTail: false
-                });
+                if (page !== 0)
+                    this.setState({
+                        isLoadingTail: false
+                    });
+                else
+                    this.setState({
+                        isRefreshing: false
+                    });
             });
     };
 
     _renderRow = (row) => {
-        return (
-            <TouchableHighlight>
-                <View style={styles.item}>
-                    <Text style={styles.title}>{row.title}</Text>
-                    <Image source={{uri: row.thumb}} style={styles.thumb}>
-                        <Image
-                            source={require('../img/play.png')}
-                            style={styles.play}/>
-                    </Image>
-                    <View style={styles.itemFooter}>
-                        <View style={styles.handleBox}>
-                            <Image
-                                source={require('../img/heart.png')}
-                                style={styles.up}/>
-                            <Text style={styles.handleText}>喜欢</Text>
-                        </View>
-                        <View style={styles.handleBox}>
-                            <Image
-                                source={require('../img/chat.png')}
-                                style={styles.up}/>
-                            <Text style={styles.handleText}>评论</Text>
-                        </View>
-                    </View>
-                </View>
-            </TouchableHighlight>
-        );
+        return <Item
+            key={row._id}
+            onSelect={() => this._loadPage(row)}
+            row={row}/>;
     };
 
     _hasMore = () => {
@@ -112,6 +110,14 @@ export default class List extends Component {
         }
         let page = cachedResult.nextPage;
         this._fetchData(page);
+    };
+
+    _onRefresh = () => {
+        if (!this._hasMore() || this.state.isRefreshing) {
+            return;
+        }
+
+        this._fetchData(0);
     };
 
     _renderFooter = () => {
@@ -133,6 +139,15 @@ export default class List extends Component {
         );
     };
 
+    _loadPage = (row) => {
+        this.props.navigator.push({
+            name: 'detail',
+            component: Detail,
+            params: {
+                data: row
+            }
+        });
+    };
 
     render() {
         return (
@@ -148,6 +163,15 @@ export default class List extends Component {
                     onEndReached={this._fetchMoreData}
                     onEndReachedTreshold={20}
                     renderFooter={this._renderFooter}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={this.state.isRefreshing}
+                            onRefresh={this._onRefresh}
+                            tintColor="#ff0000"
+                            title='拼命加载中...'
+                        />
+                    }
                 />
             </View>
         );
@@ -169,52 +193,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         textAlign: 'center',
         fontWeight: '600'
-    },
-    item: {
-        width: width,
-        marginBottom: 10,
-        backgroundColor: 'white'
-    },
-    thumb: {
-        width: width,
-        height: width * 0.56,
-        resizeMode: 'cover',
-    },
-    title: {
-        padding: 10,
-        fontSize: 18,
-        color: '#333'
-    },
-    itemFooter: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        backgroundColor: '#eee'
-    },
-    handleBox: {
-        padding: 10,
-        flexDirection: 'row',
-        width: width / 2 - 0.5,
-        justifyContent: 'center',
-        backgroundColor: '#fff'
-    },
-    play: {
-        position: 'absolute',
-        bottom: 14,
-        right: 14,
-        width: 40,
-        height: 40,
-    },
-
-    handleText: {
-        paddingLeft: 12,
-        fontSize: 18,
-        color: '#333',
-        alignItems: 'center'
-    },
-
-    up: {
-        width: 20,
-        height: 20
     },
 
     loadingMore: {

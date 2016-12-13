@@ -13,6 +13,7 @@ module.exports = {
     },
     api:{
         base:'http://rap.taobao.org/mockjs/11392/',
-        list:'api/creations'
+        list:'api/creations',
+        up:'api/up'
     }
 };
