@@ -9,6 +9,7 @@ import {
     StyleSheet,
     Text,
     View,
+    ActivityIndicator,
     Dimensions
 } from 'react-native';
 
@@ -25,7 +26,12 @@ export default class Detail extends Component {
             rate: 1,
             muted: false,
             resizeMode: 'contain',
-            repeat: false
+            repeat: false,
+            videoLoaded: false,
+
+            videoTotal: 0,
+            currentTime: 0,
+            videoProgress: 0.01
         };
     }
 
@@ -42,12 +48,28 @@ export default class Detail extends Component {
     };
 
     _onProgress = (data) => {
-        console.log('onProgress');
-        console.log(data);
+        if (!this.state.videoLoaded) {
+            console.log('执行咯~~~~');
+            this.setState({
+                videoLoaded: true
+            });
+        }
+
+        let duration = data.seekableDuration;
+        let currentTime = data.currentTime;
+        let percent = Number((currentTime / duration).toFixed(2));
+
+        this.setState({
+            videoTotal: duration,
+            currentTime: Number(currentTime.toFixed(2)),
+            videoProgress: percent
+        });
     };
 
     _onEnd = () => {
-        console.log('_onEnd');
+        this.setState({
+            videoProgress: 1
+        });
     };
 
     _onError = (e) => {
@@ -57,8 +79,6 @@ export default class Detail extends Component {
 
     render() {
         let data = this.props.data;
-        console.log('进来了');
-        console.log(data);
         return (
             <View style={styles.container}>
                 <Text onPress={this._backToList}>详情界面{data._id}</Text>
@@ -77,9 +97,18 @@ export default class Detail extends Component {
                         onLoadStart={this._onLoadStart}
                         onLoad={this._onLoad}
                         onProgress={this._onProgress}
-                        onEnd={this._onEnd}
                         onError={this._onError}
+                        onEnd={this._onEnd}
                     />
+                    {
+                        !this.state.videoLoaded &&
+                        <ActivityIndicator color="#ee735c"
+                                           style={styles.loading}/>
+                    }
+                    <View style={styles.progressBox}>
+                        <View style={[styles.progressBar,
+                            {width: width * this.state.videoProgress}]}/>
+                    </View>
                 </View>
             </View>
         );
@@ -88,8 +117,6 @@ export default class Detail extends Component {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
         backgroundColor: '#F5FCFF',
     },
     videoBox: {
@@ -100,6 +127,25 @@ const styles = StyleSheet.create({
         width: width,
         height: 360,
         backgroundColor: 'black'
-    }
+    },
+
+    loading: {
+        position: 'absolute',
+        left: 0,
+        top: 180,
+        width: width,
+        alignSelf: 'center',
+        backgroundColor: 'transparent'
+    },
+    progressBox: {
+        width: width,
+        height: 2,
+        backgroundColor: 'gray',
+    },
+    progressBar: {
+        width: 1,
+        height: 2,
+        backgroundColor: '#ee735c'
+    },
 
 });
